@@ -6,7 +6,14 @@ import { io } from 'socket.io-client';
 import API from '../api'; // Import your configured Axios instance
 
 // Connect to the backend socket pipeline
-const socket = io();
+const SOCKET_URL = window.location.hostname === "localhost"
+  ? "http://localhost:5000"
+  : "https://sync-space-vet4.onrender.com";
+
+const socket = io(SOCKET_URL, {
+  transports: ["websocket", "polling"],
+  withCredentials: true
+});
 
 export default function Workspace() {
   const navigate = useNavigate();

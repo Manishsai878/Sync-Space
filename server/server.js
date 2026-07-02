@@ -13,10 +13,12 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app); 
 
-// Socket.io Setup
-const io = new Server(server, {
+const io = require('socket.io')(server, {
   cors: {
-    origin: "*", 
+    origin: [
+      "http://localhost:5173",
+      "https://sync-space-vet4.onrender.com"
+    ],
     methods: ["GET", "POST"]
   }
 });
