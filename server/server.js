@@ -5,6 +5,7 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 const Message = require('./models/Message');
 
 require('dotenv').config();
@@ -57,17 +58,25 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`❌ Client disconnected: /${socket.id}`);
+    console.log(`❌ Client disconnected: ${socket.id}`);
   });
 });
 
-// --- COMPLETE THE APP: SERVE FRONTEND ---
-// 1. Point Express to the React build folder
-app.use(express.static(path.join(__dirname, '../client/dist')));
+// --- DEPLOYMENT FRONTEND CONFIGURATION ---
+const frontendBuildPath = path.join(__dirname, '../client/dist');
+console.log(`🔍 Checking production assets path at: ${frontendBuildPath}`);
 
-// 2. Catch-all route: Using a strict regex literal to match everything safely in Express v5 🚀
+// Serve static assets out of the client build folder
+app.use(express.static(frontendBuildPath));
+
+// Strict catch-all for React SPA Router logic
 app.get(/^\/(?!api).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  const indexPath = path.join(frontendBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send(`<h3>Deployment Error: Production build folder missing!</h3><p>Ensure your build script compiled the frontend into: <code>${frontendBuildPath}</code></p>`);
+  }
 });
 
 // Database Connection
@@ -77,5 +86,5 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/sync-space'
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Deployment Server running on port ${PORT}`);
 });
