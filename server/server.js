@@ -84,7 +84,10 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/sync-space'
   .then(() => console.log('✅ MongoDB Connected'))
   .catch(err => console.log(err));
 
+// Change your port definition to this:
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Deployment Server running on port ${PORT}`);
+
+// Ensure your app.listen uses that PORT variable:
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on port ${PORT}`);
 });
