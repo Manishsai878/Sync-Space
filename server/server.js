@@ -1,39 +1,81 @@
-require('dotenv').config();
+// server/server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+const Message = require('./models/Message');
+
+require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app); 
 
-// Global Security Hardening Middlewares
-app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+// Socket.io Setup
+const io = new Server(server, {
+  cors: {
+    origin: "*", 
+    methods: ["GET", "POST"]
+  }
+});
+
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-// API Brute-Force Rate Limiting (100 requests max every 15 minutes)
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { msg: 'Too many requests from this device. Please try again later.' }
+// API Routes
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
+app.get('/api/messages', async (req, res) => {
+  try {
+    const messages = await Message.find().sort({ createdAt: 1 });
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: "Could not load messages" });
+  }
 });
-app.use('/api/', apiLimiter);
 
-// Bind Route Controllers
-app.use('/api/auth', require('./routes/auth'));
+// Socket.io Real-Time Logic
+io.on('connection', (socket) => {
+  console.log(`🔌 New client connected: ${socket.id}`);
 
-// Base Checkpoint Test Route
-app.get('/', (req, res) => res.send('SyncSpace API Core running securely...'));
+  socket.on('sendMessage', async (messageData) => {
+    try {
+      const newMessage = new Message({
+        text: messageData.text,
+        sender: messageData.sender,
+        timestamp: messageData.timestamp
+      });
+      await newMessage.save();
+
+      io.emit('receiveMessage', messageData);
+    } catch (err) {
+      console.error("Error saving message:", err);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`❌ Client disconnected: /${socket.id}`);
+  });
+});
+
+// --- COMPLETE THE APP: SERVE FRONTEND ---
+// 1. Point Express to the React build folder
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// 2. Catch-all route: Using a strict regex literal to match everything safely in Express v5 🚀
+app.get(/^\/(?!api).*/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
+
+// Database Connection
+mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/sync-space')
+  .then(() => console.log('✅ MongoDB Connected'))
+  .catch(err => console.log(err));
 
 const PORT = process.env.PORT || 5000;
-
-// Connect to Local/Cloud Cluster Mongo Instance
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('MongoDB Connected successfully.');
-    app.listen(PORT, () => console.log(`Server engine executing safely on port ${PORT}`));
-  })
-  .catch(err => {
-    console.error('Database connection breakdown encountered:', err.message);
-  });
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

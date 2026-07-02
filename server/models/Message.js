@@ -1,26 +1,19 @@
+// server/models/Message.js
 const mongoose = require('mongoose');
 
 const MessageSchema = new mongoose.Schema({
-  channelId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Channel', 
-    required: true, 
-    index: true 
+  text: {
+    type: String,
+    required: true
   },
-  senderId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  sender: {
+    type: String,
+    required: true
   },
-  textContent: { 
-    type: String, 
-    required: false,
-    trim: true 
-  },
-  fileUrl: { 
-    type: String, 
-    required: false 
+  timestamp: {
+    type: String,
+    required: true
   }
-}, { timestamps: true });
+}, { timestamps: true }); // Automatically tracks when messages were created
 
 module.exports = mongoose.model('Message', MessageSchema);
